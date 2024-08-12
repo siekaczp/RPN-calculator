@@ -25,5 +25,8 @@ dist-ssr
 
 .metals
 .bsp
+.bloop
 target
+
 project/project
+project/metals.sbt
