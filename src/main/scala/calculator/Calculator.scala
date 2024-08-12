@@ -1,14 +1,18 @@
 package calculator
 
 import scala.scalajs.js
-import scala.scalajs.js.annotation.*
-
 import org.scalajs.dom
+import com.raquo.laminar.api.L.{*, given}
 
 @main
 def Calculator(): Unit =
-  dom.document.querySelector("#app").innerHTML = s"""
-    <div>
-      <h1>Hello World of Scala.js!</h1>
-    </div>
-  """
+  renderOnDomContentLoaded(
+    dom.document.getElementById("app"),
+    Main.appElement()
+  )
+
+object Main:
+  def appElement(): Element =
+    div(
+      h1("Hello World Laminar!"),
+    )
