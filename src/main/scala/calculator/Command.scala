@@ -37,5 +37,5 @@ val CommandObserver: Observer[Command] = Observer[Command] {
     case NegateCommand =>
         Stack.negate()
     case CommaCommand =>
-        dom.console.log("CommaCommand")
+        Stack.comma()
 }
