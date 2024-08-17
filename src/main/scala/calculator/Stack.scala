@@ -7,55 +7,60 @@ import com.raquo.airstream.core.*
 import com.raquo.airstream.eventbus.EventBus
 import scala.compiletime.ops.boolean
 
+case class CurrentStackValue(val content: Double, val isEditing: Boolean, val justPushed: Boolean = false)
+
 object Stack {
-    private val decimalSeparator = ","
+    private val stack: Var[List[Double]] = Var(List())
+    private val current: Var[CurrentStackValue] = Var(CurrentStackValue(0, true))
 
-    private val stack: Var[List[Double]] = Var(List(0.0))
-    private val justPushed: Var[Option[Double]] = Var(None)
-    val editing: Var[Boolean] = Var(true)
-
-    val display: Signal[List[String]] = stack.signal.combineWithFn(justPushed.signal, editing.signal) {
-        (stackContent, pushedContent, isEditing) =>
-            val first = 
-                pushedContent.orElse(stackContent.headOption).getOrElse(0).toString
-                + (if !isEditing then decimalSeparator else "")
-
-            first +: stackContent.tail.map(_.toString + decimalSeparator)
+    val display: Signal[List[String]] = stack.signal.combineWithFn(current.signal) {
+        (stackContent, currentContent) =>
+            currentContent.content.toString +: stackContent.map(_.toString)
     }
 
-    def updateCurrentValue(f: Double => Double): Unit =
-        justPushed set None
-        editing set true
-        stack update {
-            content => f(content.headOption.getOrElse(0.0)) +: content.tail
-        }
-
     def negate(): Unit =
-        stack update {
-            content => -content.headOption.getOrElse(0.0) +: content.tail
+        current update { case CurrentStackValue(x, isEditing, _) => CurrentStackValue(-x, isEditing) }
+
+    def digit(x: Int): Unit =
+        current update { case CurrentStackValue(value, isEditing, justPushed) =>
+            if isEditing then
+                if justPushed then
+                    CurrentStackValue(x, true)
+                else
+                    CurrentStackValue(value * 10 + x, true)
+            else
+                stack update { value +: _ }
+                CurrentStackValue(x.toDouble, true)
         }
 
-    def push(x: Int = 0): Unit = 
-        if x == 0 then justPushed set Some(stack.now().headOption.getOrElse(0))
-        editing set true
-        stack update { content => 
-            justPushed.now().getOrElse(x.toDouble) +: content
+    def backspace(): Unit = 
+        current update { case CurrentStackValue(value, isEditing, _) =>
+            if isEditing then
+                CurrentStackValue(math.floor(value / 10), true)
+            else
+                CurrentStackValue(0.0, true)
+        }
+
+    def push(): Unit = 
+        current update { case CurrentStackValue(value, isEditing, _) => 
+            stack update { value +: _ }
+            CurrentStackValue(value, true, true)
         }
 
     def pop(): Unit =
-        justPushed set None
-        editing set false
-        stack update { current => if current.length <= 1 then List(0.0) else current.tail }
+        stack update { content => 
+            current set CurrentStackValue(content.headOption.getOrElse(0.0), content.isEmpty)
+            content.drop(1)
+        }
 
     private def binaryOperator(f: (Double, Double) => Double): Unit =
-        if justPushed.now().isDefined then
-            stack update { content => content.tail.headOption.getOrElse(0) +: content.tail }
-            justPushed set None
-
-        editing set false
         stack update { _ match
-            case y :: x :: rest => f(x, y) :: rest
-            case list => list
+            case x :: rest => 
+                current update {
+                    case CurrentStackValue(y, _, _) => CurrentStackValue(f(x, y), false)
+                }
+                rest
+            case Nil => Nil
         }
 
     def add(): Unit = binaryOperator(_ + _)

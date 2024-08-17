@@ -19,15 +19,9 @@ case object EnterCommand extends Command
 
 val CommandObserver: Observer[Command] = Observer[Command] {
     case DigitCommand(x: Int) =>
-        if Stack.editing.now() then
-            Stack.updateCurrentValue(current => 10 * current + x)
-        else
-            Stack.push(x)
+        Stack.digit(x)
     case BackspaceCommand =>
-        if Stack.editing.now() then
-            Stack.updateCurrentValue(current => math.floor(current / 10))
-        else
-            Stack.updateCurrentValue(_ => 0.0)
+        Stack.backspace()
     case DropCommand =>
         Stack.pop()
     case EnterCommand =>
